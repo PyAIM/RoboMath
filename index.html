@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RoboMath: Robot Arm in Action</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255,255,255,0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 800px;
+        }
+        h1 {
+            color: #333;
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 40px;
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .menu-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+        .menu-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        .menu-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        .footer {
+            margin-top: 40px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 RoboMath: Robot Arm in Action</h1>
+        <div class="subtitle">Explore the Mathematics Behind Robotic Motion</div>
+        
+        <div class="menu-grid">
+            <div class="menu-card" onclick="window.location.href='2d.html'">
+                <div class="icon">📐</div>
+                <h3>2D Robot Arm</h3>
+                <p>Learn the fundamentals with a simple 2-link planar arm. Perfect for understanding basic concepts of forward and inverse kinematics.</p>
+            </div>
+            
+            <div class="menu-card" onclick="window.location.href='3d.html'">
+                <div class="icon">🎮</div>
+                <h3>3D Robot Arm</h3>
+                <p>Experience spatial robotics with a 3-DOF arm. Drag targets in 3D space and see how the mathematics scales to real-world applications.</p>
+            </div>
+            
+            <div class="menu-card" onclick="window.location.href='math-explorer.html'">
+                <div class="icon">📚</div>
+                <h3>Math Explorer</h3>
+                <p>Dive deep into the mathematical foundations. Complete derivations, formulas, and interactive explanations of all concepts.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 RoboMath Educational Suite | Created for Linear Algebra & Robotics Education</p>
+            <p>Explore how mathematics brings robots to life!</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Robot Arm - RoboMath</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        #container { 
+            position: relative; 
+            width: 100vw;
+            height: 100vh;
+        }
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        #info-panel {
+            position: absolute;
+            top: 100px;
+            left: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        #info-panel.minimized {
+            height: 40px;
+            overflow: hidden;
+        }
+        #panel-header {
+            cursor: move;
+            padding: 5px;
+            margin: -15px -15px 10px -15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        #minimize-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #controls {
+            position: absolute;
+            top: 100px;
+            right: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        #copyright {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.9);
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #666;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #home-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.95);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .data-item {
+            margin: 8px 0;
+            padding: 5px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .status {
+            padding: 5px;
+            border-radius: 3px;
+            font-weight: bold;
+            text-align: center;
+            margin: 5px 0;
+        }
+        .status.reaching { background: #d4edda; color: #155724; }
+        .status.reached { background: #d1ecf1; color: #0c5460; }
+        .status.stuck { background: #f8d7da; color: #721c24; }
+        select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .method-info {
+            background: #e8f4f8;
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-size: 11px;
+            border-left: 3px solid #2194ce;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <button id="home-btn" onclick="window.location.href='index.html'" title="Back to Main Menu">🏠</button>
+        
+        <div id="title">
+            <h1>🤖 RoboMath 3D: Spatial Robot Arm</h1>
+            <div class="subtitle">3D Inverse Kinematics Demo</div>
+        </div>
+        
+        <div id="info-panel">
+            <div id="panel-header">
+                3D Robot Data
+                <button id="minimize-btn" onclick="togglePanel()">−</button>
+            </div>
+            <div id="panel-content">
+                <p><strong>🎯 Controls:</strong></p>
+                <ul>
+                    <li>Left mouse: Rotate view</li>
+                    <li>Right mouse: Pan view</li>
+                    <li>Mouse wheel: Zoom</li>
+                    <li>Drag target: Move arm endpoint</li>
+                </ul>
+                <div id="status-display" class="status reaching">🔄 Reaching for target...</div>
+                <div id="mathDisplay">
+                    <div class="data-item">Target X: <span id="target-x">0.00</span></div>
+                    <div class="data-item">Target Y: <span id="target-y">0.00</span></div>
+                    <div class="data-item">Target Z: <span id="target-z">0.00</span></div>
+                    <div class="data-item">Hand X: <span id="hand-x">0.00</span></div>
+                    <div class="data-item">Hand Y: <span id="hand-y">0.00</span></div>
+                    <div class="data-item">Hand Z: <span id="hand-z">0.00</span></div>
+                    <div class="data-item">Distance: <span id="distance">0.00</span></div>
+                    <div class="data-item">Base: <span id="base-angle">0.0</span>°</div>
+                    <div class="data-item">Shoulder: <span id="shoulder-angle">0.0</span>°</div>
+                    <div class="data-item">Elbow: <span id="elbow-angle">0.0</span>°</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <button onclick="resetDemo()">🔄 Reset</button>
+            <button onclick="toggleMode()">🎯 Auto Mode</button>
+            <br><br>
+            <label for="ik-method"><strong>IK Method:</strong></label>
+            <select id="ik-method" onchange="changeIKMethod()">
+                <option value="dls">Damped Least Squares</option>
+                <option value="gradient">Gradient Descent</option>
+                <option value="transpose">Jacobian Transpose</option>
+                <option value="hybrid">Hybrid (DLS + Gradient)</option>
+            </select>
+            <div id="method-info" class="method-info">
+                <strong>Damped Least Squares:</strong> Stable near singularities
+            </div>
+            <div class="control-group">
+                <label for="tolerance">IK Solver Tolerance:</label>
+                <input type="range" id="tolerance" min="0.001" max="0.5" step="0.001" value="0.1">
+                <span id="toleranceValue">0.100</span>
+            </div>
+
+            <div class="control-group">
+                <label for="maxIterations">Max Iterations:</label>
+                <input type="range" id="maxIterations" min="10" max="500" step="10" value="100">
+                <span id="iterationsValue">100</span>
+            </div>
+
+            <div class="control-group">
+                <label for="dampingFactor">Damping Factor (λ):</label>
+                <input type="range" id="dampingFactor" min="0.001" max="0.1" step="0.001" value="0.01">
+                <span id="dampingValue">0.010</span>
+            </div>
+            <br>
+            <div id="gui-container"></div>
+        </div>
+        
+        <div id="copyright">
+            © 2024 RoboMath 3D Educational Demo | 3D Inverse Kinematics Implementation
+        </div>
+    </div>
+
+    <script>
+        // Three.js variables for 3D version
+        let scene, camera, renderer;
+        let robotArm, target;
+        let autoMode = true;
+        let gui;
+        let isDragging = false;
+        let raycaster, mouse;
+        let panelDragging = false;
+        let panelOffset = { x: 0, y: 0 };
+        let currentIKMethod = 'dls';
+        let consecutiveFailures = 0;
+        const MAX_CONSECUTIVE_FAILURES = 10;
+        class InverseKinematicsSolver {
+            constructor() {
+                // IK Solver parameters
+                this.tolerance = 0.1;
+                this.maxIterations = 100;
+                this.dampingFactor = 0.01;
+                this.currentIterations = 0;
+                this.lastError = 0;
+                
+                // Initialize UI controls
+                this.initControls();
+            }
+            
+            initControls() {
+                // Tolerance slider
+                const toleranceSlider = document.getElementById('tolerance');
+                const toleranceValue = document.getElementById('toleranceValue');
+                
+                toleranceSlider.addEventListener('input', (e) => {
+                this.tolerance = parseFloat(e.target.value);
+                toleranceValue.textContent = this.tolerance.toFixed(3);
+                this.onParametersChanged();
+                });
+                
+                // Max iterations slider
+                const iterationsSlider = document.getElementById('maxIterations');
+                const iterationsValue = document.getElementById('iterationsValue');
+                
+                iterationsSlider.addEventListener('input', (e) => {
+                this.maxIterations = parseInt(e.target.value);
+                iterationsValue.textContent = this.maxIterations;
+                this.onParametersChanged();
+                });
+                
+                // Damping factor slider
+                const dampingSlider = document.getElementById('dampingFactor');
+                const dampingValue = document.getElementById('dampingValue');
+                
+                dampingSlider.addEventListener('input', (e) => {
+                this.dampingFactor = parseFloat(e.target.value);
+                dampingValue.textContent = this.dampingFactor.toFixed(3);
+                this.onParametersChanged();
+                });
+            }
+            
+            onParametersChanged() {
+                // Re-run IK with new parameters if target is set
+                if (this.currentTarget) {
+                this.solve(this.currentTarget);
+                }
+                this.updateSolverInfo();
+            }
+            
+            solve(targetPosition) {
+                this.currentTarget = targetPosition;
+                this.currentIterations = 0;
+                
+                for (let i = 0; i < this.maxIterations; i++) {
+                this.currentIterations = i + 1;
+                
+                // Calculate current end effector position
+                const currentPosition = this.forwardKinematics();
+                
+                // Calculate error
+                const error = this.calculateError(currentPosition, targetPosition);
+                this.lastError = error;
+                
+                // Check convergence
+                if (error < this.tolerance) {
+                    console.log(`IK converged after ${i + 1} iterations. Error: ${error.toFixed(4)}`);
+                    this.onConvergence(true);
+                    return true;
+                }
+                
+                // Damped Least Squares step
+                this.dampedLeastSquaresStep(currentPosition, targetPosition);
+                }
+                
+                console.log(`IK failed to converge after ${this.maxIterations} iterations. Error: ${this.lastError.toFixed(4)}`);
+                this.onConvergence(false);
+                return false;
+            }
+            
+            dampedLeastSquaresStep(currentPos, targetPos) {
+                // Calculate Jacobian matrix
+                const J = this.calculateJacobian();
+                
+                // Calculate error vector
+                const e = [
+                targetPos.x - currentPos.x,
+                targetPos.y - currentPos.y, 
+                targetPos.z - currentPos.z
+                ];
+                
+                // Damped Least Squares formula: Δθ = Jᵀ(JJᵀ + λ²I)⁻¹e
+                const JT = math.transpose(J);
+                const JJT = math.multiply(J, JT);
+                const dampingMatrix = math.multiply(
+                math.identity(3), 
+                this.dampingFactor * this.dampingFactor
+                );
+                const inverseTerm = math.inv(math.add(JJT, dampingMatrix));
+                const deltaTheta = math.multiply(math.multiply(JT, inverseTerm), e);
+                
+                // Update joint angles
+                this.updateJointAngles(deltaTheta);
+            }
+            
+            calculateError(pos1, pos2) {
+                const dx = pos1.x - pos2.x;
+                const dy = pos1.y - pos2.y;
+                const dz = pos1.z - pos2.z;
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+            
+            onConvergence(success) {
+                this.updateSolverInfo();
+                this.updateVisualFeedback(success);
+            }
+            
+            updateSolverInfo() {
+                const infoElement = document.getElementById('solverInfo');
+                if (infoElement) {
+                infoElement.innerHTML = `
+                    <div class="solver-stats">
+                    <strong>IK Solver Status</strong><br>
+                    Tolerance: ${this.tolerance.toFixed(3)}<br>
+                    Current Error: ${this.lastError.toFixed(4)}<br>
+                    Iterations: ${this.currentIterations}/${this.maxIterations}<br>
+                    Damping (λ): ${this.dampingFactor.toFixed(3)}<br>
+                    ${this.lastError < this.tolerance ? '✅ Converged' : '🔄 Solving...'}
+                    </div>
+                `;
+                }
+            }
+            
+            updateVisualFeedback(success) {
+                const targetSphere = document.getElementById('targetSphere');
+                const handSphere = document.getElementById('handSphere');
+                
+                if (targetSphere && handSphere) {
+                if (success) {
+                    // Visual feedback for success
+                    targetSphere.material.color.setHex(0x00ff00); // Green
+                    handSphere.material.color.setHex(0x00ff00);
+                    
+                    // Optional: Add particle effects or animations
+                    this.createSuccessEffect();
+                } else {
+                    // Visual feedback for failure to converge
+                    targetSphere.material.color.setHex(0xff0000); // Red
+                    handSphere.material.color.setHex(0xff0000);
+                }
+                }
+                
+                // Update the main status display
+                this.updateStatusDisplay(success);
+            }
+            
+            updateStatusDisplay(success) {
+                const statusElement = document.getElementById('statusDisplay');
+                if (statusElement) {
+                if (success) {
+                    statusElement.innerHTML = `
+                    <div style="color: #4CAF50;">
+                        <strong>🎯 Target Reached!</strong><br>
+                        Distance: ${this.lastError.toFixed(3)} < Tolerance: ${this.tolerance.toFixed(3)}<br>
+                        Iterations: ${this.currentIterations}
+                    </div>
+                    `;
+                } else {
+                    statusElement.innerHTML = `
+                    <div style="color: #f44336;">
+                        <strong>⚠️ Target Not Reached</strong><br>
+                        Distance: ${this.lastError.toFixed(3)} > Tolerance: ${this.tolerance.toFixed(3)}<br>
+                        Max iterations (${this.maxIterations}) exceeded
+                    </div>
+                    `;
+                }
+                }
+            }
+            
+            createSuccessEffect() {
+                // Optional: Add visual effects when target is reached
+                // This could be particles, glow effects, etc.
+                console.log("Target successfully reached within tolerance!");
+            }
+            }
+
+            // CSS for better visual feedback
+            const additionalCSS = `
+            .control-group {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            }
+
+            .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            }
+
+            .control-group input[type="range"] {
+            width: 80%;
+            vertical-align: middle;
+            }
+
+            .solver-stats {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 0.9em;
+            }
+
+            .status-success {
+            color: #4CAF50;
+            font-weight: bold;
+            }
+
+            .status-fail {
+            color: #f44336;
+            font-weight: bold;
+            }
+
+            .convergence-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+            }
+
+            .converged {
+            background: #4CAF50;
+            }
+
+            .not-converged {
+            background: #f44336;
+            }
+            `;
+
+            // Initialize when document is ready
+            document.addEventListener('DOMContentLoaded', function() {
+            // Add CSS to document
+            const style = document.createElement('style');
+            style.textContent = additionalCSS;
+            document.head.appendChild(style);
+            
+            // Initialize IK solver with tolerance controls
+            window.ikSolver = new InverseKinematicsSolver();
+            });
+        class RobotArm3D {
+            constructor() {
+                this.L1 = 2.0;  // Upper arm length
+                this.L2 = 1.5;  // Forearm length
+                this.L3 = 1.0;  // Wrist length
+                
+                // Joint angles (in radians)
+                this.theta1 = Math.PI / 4;  // Base rotation
+                this.theta2 = Math.PI / 6;  // Shoulder pitch
+                this.theta3 = Math.PI / 4;  // Elbow pitch
+                
+                // Create visual components
+                this.createVisualization();
+            }
+            
+            createVisualization() {
+                // Base (fixed)
+                const baseGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 32);
+                const baseMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+                this.base = new THREE.Mesh(baseGeometry, baseMaterial);
+                this.base.rotation.x = Math.PI / 2;
+                scene.add(this.base);
+                
+                // Link 1 (rotates around Y axis)
+                const link1Geometry = new THREE.CylinderGeometry(0.1, 0.1, this.L1, 32);
+                const link1Material = new THREE.MeshPhongMaterial({ color: 0x2194ce });
+                this.link1 = new THREE.Mesh(link1Geometry, link1Material);
+                this.link1.position.y = this.L1 / 2;
+                this.base.add(this.link1);
+                
+                // Joint 1 (shoulder)
+                const joint1Geometry = new THREE.SphereGeometry(0.2, 32, 32);
+                const joint1Material = new THREE.MeshPhongMaterial({ color: 0xff4444 });
+                this.joint1 = new THREE.Mesh(joint1Geometry, joint1Material);
+                this.joint1.position.y = this.L1;
+                this.base.add(this.joint1);
+                
+                // Link 2 (shoulder to elbow)
+                const link2Geometry = new THREE.CylinderGeometry(0.08, 0.08, this.L2, 32);
+                const link2Material = new THREE.MeshPhongMaterial({ color: 0x4caf50 });
+                this.link2 = new THREE.Mesh(link2Geometry, link2Material);
+                this.link2.position.y = this.L2 / 2;
+                this.joint1.add(this.link2);
+                
+                // Joint 2 (elbow)
+                const joint2Geometry = new THREE.SphereGeometry(0.15, 32, 32);
+                const joint2Material = new THREE.MeshPhongMaterial({ color: 0xff8800 });
+                this.joint2 = new THREE.Mesh(joint2Geometry, joint2Material);
+                this.joint2.position.y = this.L2;
+                this.joint1.add(this.joint2);
+                
+                // Link 3 (elbow to hand)
+                const link3Geometry = new THREE.CylinderGeometry(0.06, 0.06, this.L3, 32);
+                const link3Material = new THREE.MeshPhongMaterial({ color: 0x9c27b0 });
+                this.link3 = new THREE.Mesh(link3Geometry, link3Material);
+                this.link3.position.y = this.L3 / 2;
+                this.joint2.add(this.link3);
+                
+                // Hand (end effector)
+                const handGeometry = new THREE.SphereGeometry(0.15, 32, 32); // Slightly larger for better visibility
+                const handMaterial = new THREE.MeshPhongMaterial({ color: 0xffeb3b });
+                this.hand = new THREE.Mesh(handGeometry, handMaterial);
+                this.hand.position.y = this.L3;
+                this.joint2.add(this.hand);
+                
+                this.updateVisualization();
+            }
+            
+            forwardKinematics() {
+                // Calculate hand position from joint angles
+                const x = this.L2 * Math.sin(this.theta2) * Math.cos(this.theta1) + 
+                         this.L3 * Math.sin(this.theta2 + this.theta3) * Math.cos(this.theta1);
+                const y = this.L1 + this.L2 * Math.cos(this.theta2) + 
+                         this.L3 * Math.cos(this.theta2 + this.theta3);
+                const z = this.L2 * Math.sin(this.theta2) * Math.sin(this.theta1) + 
+                         this.L3 * Math.sin(this.theta2 + this.theta3) * Math.sin(this.theta1);
+                
+                return new THREE.Vector3(x, y, z);
+            }
+            
+            jacobian() {
+                // 3D Jacobian for 3-DOF arm
+                const s1 = Math.sin(this.theta1);
+                const c1 = Math.cos(this.theta1);
+                const s2 = Math.sin(this.theta2);
+                const c2 = Math.cos(this.theta2);
+                const s23 = Math.sin(this.theta2 + this.theta3);
+                const c23 = Math.cos(this.theta2 + this.theta3);
+                
+                // ∂x/∂θ₁, ∂x/∂θ₂, ∂x/∂θ₃
+                const J11 = -this.L2 * s2 * s1 - this.L3 * s23 * s1;
+                const J12 = this.L2 * c2 * c1 + this.L3 * c23 * c1;
+                const J13 = this.L3 * c23 * c1;
+                
+                // ∂y/∂θ₁, ∂y/∂θ₂, ∂y/∂θ₃
+                const J21 = 0;
+                const J22 = -this.L2 * s2 - this.L3 * s23;
+                const J23 = -this.L3 * s23;
+                
+                // ∂z/∂θ₁, ∂z/∂θ₂, ∂z/∂θ₃
+                const J31 = this.L2 * s2 * c1 + this.L3 * s23 * c1;
+                const J32 = this.L2 * c2 * s1 + this.L3 * c23 * s1;
+                const J33 = this.L3 * c23 * s1;
+                
+                return [
+                    [J11, J12, J13],
+                    [J21, J22, J23],
+                    [J31, J32, J33]
+                ];
+            }
+            
+            
+            // Method 1: Damped Least Squares
+            inverseVelocityDLS(desiredHandVelocity) {
+                const J = this.jacobian();
+                const lambda = 0.05; // Moderate damping
+                
+                const JT = this.transpose(J);
+                const JJT = this.multiplyMatrices(J, JT);
+                
+                // Add damping to diagonal
+                const damped = [
+                    [JJT[0][0] + lambda*lambda, JJT[0][1], JJT[0][2]],
+                    [JJT[1][0], JJT[1][1] + lambda*lambda, JJT[1][2]],
+                    [JJT[2][0], JJT[2][1], JJT[2][2] + lambda*lambda]
+                ];
+                
+                const invDamped = this.invert3x3(damped);
+                if (!invDamped) {
+                    return new THREE.Vector3(0, 0, 0); // Fallback to zero
+                }
+                
+                const temp = this.multiplyMatrices(JT, invDamped);
+                const jointVel = this.multiplyMatrixVector(temp, [
+                    desiredHandVelocity.x,
+                    desiredHandVelocity.y, 
+                    desiredHandVelocity.z
+                ]);
+                
+                return new THREE.Vector3(jointVel[0], jointVel[1], jointVel[2]);
+            }
+            
+            // Method 2: Gradient Descent
+            solveGradientDescent(targetPosition, maxIterations = 5) {
+                const learningRate = 0.3;
+                let currentPos = this.forwardKinematics();
+                let error = new THREE.Vector3().subVectors(targetPosition, currentPos);
+                let iterations = 0;
+                
+                while (error.length() > 0.05 && iterations < maxIterations) {
+                    const J = this.jacobian();
+                    const JT = this.transpose(J);
+                    
+                    // Gradient descent step: Δθ = α * Jᵀ * error
+                    const deltaTheta = this.multiplyMatrixVector(JT, [error.x, error.y, error.z]);
+                    
+                    this.theta1 += learningRate * deltaTheta[0];
+                    this.theta2 += learningRate * deltaTheta[1];
+                    this.theta3 += learningRate * deltaTheta[2];
+                    
+                    // Apply joint limits
+                    this.theta1 = this.theta1 % (2 * Math.PI);
+                    this.theta2 = Math.max(-Math.PI * 0.8, Math.min(Math.PI * 0.8, this.theta2));
+                    this.theta3 = Math.max(-Math.PI * 0.8, Math.min(Math.PI * 0.8, this.theta3));
+                    
+                    currentPos = this.forwardKinematics();
+                    error = new THREE.Vector3().subVectors(targetPosition, currentPos);
+                    iterations++;
+                }
+                
+                this.updateVisualization();
+                return error.length();
+            }
+            
+            // Method 3: Jacobian Transpose
+            inverseVelocityTranspose(desiredHandVelocity) {
+                const J = this.jacobian();
+                const JT = this.transpose(J);
+                
+                // Simple transpose method: ω = α * Jᵀ * v
+                const alpha = 0.5; // Step size
+                const jointVel = this.multiplyMatrixVector(JT, [
+                    desiredHandVelocity.x,
+                    desiredHandVelocity.y,
+                    desiredHandVelocity.z
+                ]);
+                
+                return new THREE.Vector3(
+                    alpha * jointVel[0],
+                    alpha * jointVel[1],
+                    alpha * jointVel[2]
+                );
+            }
+            
+            // Method 4: Hybrid approach
+            solveHybridIK(targetPosition) {
+                // First try DLS
+                const handPos = this.forwardKinematics();
+                const direction = new THREE.Vector3().subVectors(targetPosition, handPos);
+                const distance = direction.length();
+                
+                if (distance < 0.3) {
+                    // Close to target, use gradient descent for precision
+                    return this.solveGradientDescent(targetPosition, 3);
+                } else {
+                    // Far from target, use DLS for stability
+                    const speed = Math.min(1.0, distance * 1.5);
+                    const desiredVelocity = direction.clone().normalize().multiplyScalar(speed);
+                    const jointVelocities = this.inverseVelocityDLS(desiredVelocity);
+                    
+                    const timeStep = 0.03;
+                    this.theta1 += jointVelocities.x * timeStep;
+                    this.theta2 += jointVelocities.y * timeStep;
+                    this.theta3 += jointVelocities.z * timeStep;
+                    
+                    // Apply joint limits
+                    this.theta1 = this.theta1 % (2 * Math.PI);
+                    this.theta2 = Math.max(-Math.PI * 0.8, Math.min(Math.PI * 0.8, this.theta2));
+                    this.theta3 = Math.max(-Math.PI * 0.8, Math.min(Math.PI * 0.8, this.theta3));
+                    
+                    this.updateVisualization();
+                    return distance;
+                }
+            }
+            
+            // Matrix utilities
+            transpose(matrix) {
+                const result = [];
+                for (let i = 0; i < matrix[0].length; i++) {
+                    result[i] = [];
+                    for (let j = 0; j < matrix.length; j++) {
+                        result[i][j] = matrix[j][i];
+                    }
+                }
+                return result;
+            }
+            
+            multiplyMatrices(a, b) {
+                const result = [];
+                for (let i = 0; i < a.length; i++) {
+                    result[i] = [];
+                    for (let j = 0; j < b[0].length; j++) {
+                        let sum = 0;
+                        for (let k = 0; k < a[0].length; k++) {
+                            sum += a[i][k] * b[k][j];
+                        }
+                        result[i][j] = sum;
+                    }
+                }
+                return result;
+            }
+            
+            multiplyMatrixVector(matrix, vector) {
+                const result = [];
+                for (let i = 0; i < matrix.length; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < vector.length; j++) {
+                        sum += matrix[i][j] * vector[j];
+                    }
+                    result[i] = sum;
+                }
+                return result;
+            }
+            
+            invert3x3(matrix) {
+                const a = matrix[0][0], b = matrix[0][1], c = matrix[0][2];
+                const d = matrix[1][0], e = matrix[1][1], f = matrix[1][2];
+                const g = matrix[2][0], h = matrix[2][1], i_val = matrix[2][2];
+                
+                const det = a*(e*i_val - f*h) - b*(d*i_val - f*g) + c*(d*h - e*g);
+                
+                if (Math.abs(det) < 1e-10) {
+                    return null;
+                }
+                
+                const invDet = 1.0 / det;
+                
+                return [
+                    [(e*i_val - f*h)*invDet, (c*h - b*i_val)*invDet, (b*f - c*e)*invDet],
+                    [(f*g - d*i_val)*invDet, (a*i_val - c*g)*invDet, (c*d - a*f)*invDet],
+                    [(d*h - e*g)*invDet, (b*g - a*h)*invDet, (a*e - b*d)*invDet]
+                ];
+            }
+            
+            updateVisualization() {
+                // Update base rotation
+                this.base.rotation.y = this.theta1;
+                
+                // Update shoulder pitch
+                this.joint1.rotation.z = -this.theta2;
+                
+                // Update elbow pitch
+                this.joint2.rotation.z = -this.theta3;
+            }
+            
+            followTarget(targetPosition, method) {
+                const handPos = this.forwardKinematics();
+                const direction = new THREE.Vector3().subVectors(targetPosition, handPos);
+                const distance = direction.length();
+                
+                let success = true;
+                
+                switch(method) {
+                    case 'dls':
+                        success = this.useDLS(targetPosition, distance, direction);
+                        break;
+                    case 'gradient':
+                        success = this.useGradientDescent(targetPosition);
+                        break;
+                    case 'transpose':
+                        success = this.useTranspose(targetPosition, distance, direction);
+                        break;
+                    case 'hybrid':
+                        success = this.useHybrid(targetPosition, distance);
+                        break;
+                }
+                
+                // Track consecutive failures
+                if (distance > 0.2 && !success) {
+                    consecutiveFailures++;
+                } else {
+                    consecutiveFailures = 0;
+                }
+                
+                // Auto-switch method if stuck
+                if (consecutiveFailures > MAX_CONSECUTIVE_FAILURES) {
+                    this.autoSwitchMethod();
+                    consecutiveFailures = 0;
+                }
+                
+                return { handPosition: handPos, distance: distance, success: success };
+            }
+            
+            useDLS(targetPosition, distance, direction) {
+                if (distance < 0.1) return true;
+                
+                const speed = Math.min(1.0, distance * 2);
+                const desiredVelocity = direction.clone().normalize().multiplyScalar(speed);
+                const jointVelocities = this.inverseVelocityDLS(desiredVelocity);
+                
+                // Check if we're making progress
+                if (jointVelocities.length() < 0.001 && distance > 0.2) {
+                    return false;
+                }
+                
+                const timeStep = 0.03;
+                this.theta1 += jointVelocities.x * timeStep;
+                this.theta2 += jointVelocities.y * timeStep;
+                this.theta3 += jointVelocities.z * timeStep;
+                
+                this.applyJointLimits();
+                this.updateVisualization();
+                return true;
+            }
+            
+            useGradientDescent(targetPosition) {
+                const error = this.solveGradientDescent(targetPosition, 5);
+                return error < 0.15; // Consider success if error is small
+            }
+            
+            useTranspose(targetPosition, distance, direction) {
+                if (distance < 0.1) return true;
+                
+                const speed = Math.min(0.8, distance * 1.5);
+                const desiredVelocity = direction.clone().normalize().multiplyScalar(speed);
+                const jointVelocities = this.inverseVelocityTranspose(desiredVelocity);
+                
+                const timeStep = 0.04;
+                this.theta1 += jointVelocities.x * timeStep;
+                this.theta2 += jointVelocities.y * timeStep;
+                this.theta3 += jointVelocities.z * timeStep;
+                
+                this.applyJointLimits();
+                this.updateVisualization();
+                return true;
+            }
+            
+            useHybrid(targetPosition, distance) {
+                this.solveHybridIK(targetPosition);
+                const newPos = this.forwardKinematics();
+                const newDistance = newPos.distanceTo(targetPosition);
+                return newDistance < 0.15;
+            }
+            
+            applyJointLimits() {
+                this.theta1 = this.theta1 % (2 * Math.PI);
+                this.theta2 = Math.max(-Math.PI * 0.8, Math.min(Math.PI * 0.8, this.theta2));
+                this.theta3 = Math.max(-Math.PI * 0.8, Math.min(Math.PI * 0.8, this.theta3));
+            }
+            
+            autoSwitchMethod() {
+                const methods = ['gradient', 'hybrid', 'dls', 'transpose'];
+                const currentIndex = methods.indexOf(currentIKMethod);
+                const nextIndex = (currentIndex + 1) % methods.length;
+                currentIKMethod = methods[nextIndex];
+                document.getElementById('ik-method').value = currentIKMethod;
+                updateMethodInfo();
+                console.log(`Auto-switched to ${currentIKMethod} method due to poor convergence`);
+            }
+        }
+
+        function updateStatusDisplay(distance, success) {
+            const statusElement = document.getElementById('status-display');
+            // Use 0.15 threshold for visual overlap (hand radius 0.15 + target radius 0.2 = 0.35 total)
+            // But we use 0.15 as a reasonable visual threshold
+            if (distance < 0.15) {
+                statusElement.textContent = '✅ Target reached!';
+                statusElement.className = 'status reached';
+            } else if (!success) {
+                statusElement.textContent = '⚠️ Having trouble reaching...';
+                statusElement.className = 'status stuck';
+            } else if (distance < 0.5) {
+                statusElement.textContent = '🎯 Approaching target...';
+                statusElement.className = 'status reaching';
+            } else {
+                statusElement.textContent = '🔄 Reaching for target...';
+                statusElement.className = 'status reaching';
+            }
+        }
+
+        function updateMethodInfo() {
+            const infoElement = document.getElementById('method-info');
+            switch(currentIKMethod) {
+                case 'dls':
+                    infoElement.innerHTML = '<strong>Damped Least Squares:</strong> Stable near singularities';
+                    break;
+                case 'gradient':
+                    infoElement.innerHTML = '<strong>Gradient Descent:</strong> Good convergence, can be slow';
+                    break;
+                case 'transpose':
+                    infoElement.innerHTML = '<strong>Jacobian Transpose:</strong> Simple, guaranteed convergence';
+                    break;
+                case 'hybrid':
+                    infoElement.innerHTML = '<strong>Hybrid:</strong> Combines DLS stability with Gradient precision';
+                    break;
+            }
+        }
+
+        function changeIKMethod() {
+            currentIKMethod = document.getElementById('ik-method').value;
+            consecutiveFailures = 0; // Reset failure counter
+            updateMethodInfo();
+        }
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 2, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+            
+            // Create coordinate grid
+            const gridHelper = new THREE.GridHelper(10, 10);
+            scene.add(gridHelper);
+            
+            const axesHelper = new THREE.AxesHelper(3);
+            scene.add(axesHelper);
+            
+            // Create robot arm
+            robotArm = new RobotArm3D();
+            
+            // Create target (slightly larger for better visibility)
+            const targetGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const targetMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff00ff,
+                transparent: true,
+                opacity: 0.8
+            });
+            target = new THREE.Mesh(targetGeometry, targetMaterial);
+            target.position.set(2, 3, 1);
+            scene.add(target);
+            
+            // Setup raycasting for target dragging
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Setup controls
+            setupControls();
+            setupGUI();
+            setupPanelDrag();
+            
+            // Initialize method info
+            updateMethodInfo();
+            
+            // Start animation
+            animate();
+        }
+
+        function setupControls() {
+            let isMouseDown = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let isRightClick = false;
+            
+            function onMouseMove(event) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+                
+                if (isDragging) {
+                    // Update target position based on mouse in 3D
+                    raycaster.setFromCamera(mouse, camera);
+                    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                    const intersectionPoint = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(plane, intersectionPoint);
+                    
+                    // Keep target within reasonable bounds
+                    intersectionPoint.x = Math.max(-4, Math.min(4, intersectionPoint.x));
+                    intersectionPoint.y = Math.max(0.5, Math.min(5, intersectionPoint.y));
+                    intersectionPoint.z = Math.max(-4, Math.min(4, intersectionPoint.z));
+                    
+                    target.position.copy(intersectionPoint);
+                } else if (isMouseDown && !isRightClick) {
+                    // Camera rotation
+                    const deltaMove = {
+                        x: event.clientX - previousMousePosition.x,
+                        y: event.clientY - previousMousePosition.y
+                    };
+                    
+                    const spherical = new THREE.Spherical();
+                    spherical.setFromVector3(camera.position);
+                    spherical.theta -= deltaMove.x * 0.01;
+                    spherical.phi -= deltaMove.y * 0.01;
+                    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+                    
+                    camera.position.setFromSpherical(spherical);
+                    camera.lookAt(0, 2, 0);
+                } else if (isMouseDown && isRightClick) {
+                    // Camera panning
+                    const deltaMove = {
+                        x: event.clientX - previousMousePosition.x,
+                        y: event.clientY - previousMousePosition.y
+                    };
+                    
+                    const panVector = new THREE.Vector3(-deltaMove.x * 0.01, deltaMove.y * 0.01, 0);
+                    camera.position.add(panVector);
+                    camera.lookAt(0, 2, 0);
+                }
+                
+                previousMousePosition = { x: event.clientX, y: event.clientY };
+            }
+            
+            function onMouseDown(event) {
+                isMouseDown = true;
+                previousMousePosition = { x: event.clientX, y: event.clientY };
+                isRightClick = event.button === 2;
+                
+                // Check if clicking on target
+                if (event.button === 0) {
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObject(target);
+                    
+                    if (intersects.length > 0) {
+                        isDragging = true;
+                    }
+                }
+            }
+            
+            function onMouseUp() {
+                isMouseDown = false;
+                isDragging = false;
+            }
+            
+            function onWheel(event) {
+                const zoomSpeed = 0.001;
+                camera.position.multiplyScalar(1 + event.deltaY * zoomSpeed);
+                camera.lookAt(0, 2, 0);
+            }
+            
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+            renderer.domElement.addEventListener('wheel', onWheel, false);
+            renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
+
+        function setupPanelDrag() {
+            const panel = document.getElementById('info-panel');
+            const header = document.getElementById('panel-header');
+            
+            header.addEventListener('mousedown', startDrag);
+            
+            function startDrag(e) {
+                if (e.target.id === 'minimize-btn') return;
+                
+                panelDragging = true;
+                panelOffset.x = e.clientX - panel.offsetLeft;
+                panelOffset.y = e.clientY - panel.offsetTop;
+                
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+            }
+            
+            function onDrag(e) {
+                if (!panelDragging) return;
+                
+                panel.style.left = (e.clientX - panelOffset.x) + 'px';
+                panel.style.top = (e.clientY - panelOffset.y) + 'px';
+                panel.style.right = 'auto';
+            }
+            
+            function stopDrag() {
+                panelDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        }
+
+        function setupGUI() {
+            gui = new dat.GUI({ autoPlace: false });
+            document.getElementById('gui-container').appendChild(gui.domElement);
+            
+            const params = {
+                baseRotation: robotArm.theta1 * 180 / Math.PI,
+                shoulderAngle: robotArm.theta2 * 180 / Math.PI,
+                elbowAngle: robotArm.theta3 * 180 / Math.PI,
+            };
+            
+            gui.add(params, 'baseRotation', -180, 180).onChange((value) => {
+                robotArm.theta1 = value * Math.PI / 180;
+                robotArm.updateVisualization();
+            });
+            
+            gui.add(params, 'shoulderAngle', -90, 90).onChange((value) => {
+                robotArm.theta2 = value * Math.PI / 180;
+                robotArm.updateVisualization();
+            });
+            
+            gui.add(params, 'elbowAngle', -90, 90).onChange((value) => {
+                robotArm.theta3 = value * Math.PI / 180;
+                robotArm.updateVisualization();
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (autoMode && robotArm) {
+                const result = robotArm.followTarget(target.position, currentIKMethod);
+                updateMathDisplay(result.handPosition, result.distance);
+                updateStatusDisplay(result.distance, result.success);
+            } else {
+                const handPos = robotArm.forwardKinematics();
+                const distance = handPos.distanceTo(target.position);
+                updateMathDisplay(handPos, distance);
+                updateStatusDisplay(distance, true);
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function updateMathDisplay(handPos, distance) {
+            document.getElementById('target-x').textContent = target.position.x.toFixed(2);
+            document.getElementById('target-y').textContent = target.position.y.toFixed(2);
+            document.getElementById('target-z').textContent = target.position.z.toFixed(2);
+            document.getElementById('hand-x').textContent = handPos.x.toFixed(2);
+            document.getElementById('hand-y').textContent = handPos.y.toFixed(2);
+            document.getElementById('hand-z').textContent = handPos.z.toFixed(2);
+            document.getElementById('distance').textContent = distance.toFixed(3);
+            document.getElementById('base-angle').textContent = (robotArm.theta1 * 180/Math.PI).toFixed(1);
+            document.getElementById('shoulder-angle').textContent = (robotArm.theta2 * 180/Math.PI).toFixed(1);
+            document.getElementById('elbow-angle').textContent = (robotArm.theta3 * 180/Math.PI).toFixed(1);
+        }
+
+        function resetDemo() {
+            robotArm.theta1 = Math.PI / 4;
+            robotArm.theta2 = Math.PI / 6;
+            robotArm.theta3 = Math.PI / 4;
+            robotArm.updateVisualization();
+            target.position.set(2, 3, 1);
+            consecutiveFailures = 0;
+        }
+
+        function toggleMode() {
+            autoMode = !autoMode;
+            document.querySelector('#controls button:nth-child(2)').textContent = 
+                autoMode ? "🎯 Auto Mode" : "✋ Manual Mode";
+        }
+
+        function togglePanel() {
+            const panel = document.getElementById('info-panel');
+            const btn = document.getElementById('minimize-btn');
+            
+            panel.classList.toggle('minimized');
+            btn.textContent = panel.classList.contains('minimized') ? '+' : '−';
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>

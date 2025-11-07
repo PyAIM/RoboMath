@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>2D Robot Arm - RoboMath</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        #container { 
+            position: relative; 
+            width: 100vw;
+            height: 100vh;
+        }
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        #title h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        #title .subtitle {
+            margin: 5px 0 0 0;
+            color: #666;
+            font-size: 14px;
+        }
+        #info { 
+            position: absolute; 
+            top: 100px; 
+            left: 10px; 
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #controls {
+            position: absolute;
+            top: 100px;
+            right: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #copyright {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.9);
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #666;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #home-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.95);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        .vector { color: #ff4444; font-weight: bold; }
+        .matrix { color: #2194ce; font-weight: bold; }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        #explainer-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .highlight {
+            background: #e3f2fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .formula {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #ffc107;
+            font-family: 'Courier New', monospace;
+        }
+        .derivation {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 3px solid #6c757d;
+        }
+        .intuition {
+            background: #d1ecf1;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 3px solid #0c5460;
+        }
+        h4 {
+            color: #495057;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <button id="home-btn" onclick="window.location.href='index.html'" title="Back to Main Menu">🏠</button>
+        
+        <div id="title">
+            <h1>🤖 RoboMath 2D: Planar Robot Arm</h1>
+            <div class="subtitle">Inverse Kinematics in 2D Space</div>
+        </div>
+        <div id="info">
+            <h3>Understanding: <span class="vector">ω</span> = <span class="matrix">J</span>⁻¹ <span class="vector">v</span></h3>
+            <p><span class="vector">v</span> = Desired hand velocity</p>
+            <p><span class="matrix">J</span> = Jacobian matrix</p>
+            <p><span class="vector">ω</span> = Joint velocities</p>
+            <p><strong>🎯 Drag the target sphere to move the arm!</strong></p>
+            <div id="mathDisplay">
+                <p>Waiting for initialization...</p>
+            </div>
+        </div>
+        <div id="controls">
+            <button onclick="resetDemo()">🔄 Reset</button>
+            <button onclick="togglePause()">⏸️ Pause</button>
+            <button onclick="showExplainer()">📚 Learn the Math</button>
+            <br><br>
+            <label>
+                <input type="checkbox" id="showVectors" checked onchange="toggleVectors()">
+                Show Velocity Vectors
+            </label>
+        </div>
+        <div id="copyright">
+            © 2024 RoboMath 2D Educational Demo | 2D Inverse Kinematics Implementation
+        </div>
+    </div>
+
+    <!-- Explainer Modal -->
+    <div id="modal-overlay" onclick="hideExplainer()"></div>
+    <div id="explainer-modal">
+        <button class="close-btn" onclick="hideExplainer()">×</button>
+        <h2>🤖 RoboMath: The Mathematics Behind Robot Motion</h2>
+        
+        <div class="section">
+            <h3>🎯 What You're Seeing</h3>
+            <p>This demo shows how <span class="highlight">linear algebra and calculus</span> control robotic movement. The robot arm uses mathematical equations to figure out how to reach the target position.</p>
+        </div>
+
+        <div class="section">
+            <h3>🧮 The Core Equation: <span class="vector">ω</span> = <span class="matrix">J</span>⁻¹ <span class="vector">v</span></h3>
+            <p><strong><span class="vector">v</span></strong> = Desired hand velocity (where we want the hand to move)</p>
+            <p><strong><span class="matrix">J</span></strong> = Jacobian matrix (mathematical relationship between joint motions and hand motion)</p>
+            <p><strong><span class="vector">ω</span></strong> = Joint velocities (how fast each joint needs to rotate)</p>
+            <p>This equation converts "where to go" into "how to move the joints."</p>
+        </div>
+
+        <div class="section">
+            <h3>🔧 How to Use This Demo</h3>
+            <ul>
+                <li><strong>🎯 Drag the pink target</strong> to see the arm follow it</li>
+                <li><strong>🔴 Watch the red arrow</strong> - shows desired hand velocity</li>
+                <li><strong>🔵 Watch the blue circles</strong> - show joint rotation speeds</li>
+                <li><strong>📊 Monitor the Jacobian matrix</strong> - updates in real-time</li>
+                <li><strong>⚠️ Notice when the arm struggles</strong> - this happens near mathematical "singularities"</li>
+            </ul>
+        </div>
+
+        <!-- MATHEMATICAL DERIVATIONS SECTION -->
+        <div class="section">
+            <h3>📐 Mathematical Foundations</h3>
+            
+            <h4>1. Forward Kinematics: Where is the hand?</h4>
+            <div class="formula">
+                x = L₁·cos(θ₁) + L₂·cos(θ₁ + θ₂)<br>
+                y = L₁·sin(θ₁) + L₂·sin(θ₁ + θ₂)
+            </div>
+            <div class="intuition">
+                <strong>Intuition:</strong> This tells us the hand position (x,y) given the joint angles (θ₁,θ₂). 
+                It's like giving someone directions: "Rotate your shoulder by θ₁, then your elbow by θ₂."
+            </div>
+
+            <h4>2. The Jacobian Matrix: How motion transforms</h4>
+            <div class="formula">
+                J = [ ∂x/∂θ₁  ∂x/∂θ₂ ] = [ -L₁·sinθ₁ - L₂·sin(θ₁+θ₂)  -L₂·sin(θ₁+θ₂) ]<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;[ ∂y/∂θ₁  ∂y/∂θ₂ ] &nbsp;&nbsp;&nbsp;[  L₁·cosθ₁ + L₂·cos(θ₁+θ₂)   L₂·cos(θ₁+θ₂) ]
+            </div>
+            <div class="intuition">
+                <strong>Intuition:</strong> The Jacobian tells us how small changes in joint angles (dθ₁, dθ₂) 
+                affect the hand position (dx, dy). Each entry is a partial derivative - the sensitivity of one 
+                coordinate to one joint angle.
+            </div>
+
+            <h4>3. Velocity Relationship: Connecting spaces</h4>
+            <div class="formula">
+                [ dx/dt ] &nbsp;&nbsp; = J · [ dθ₁/dt ]<br>
+                [ dy/dt ] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ dθ₂/dt ]<br><br>
+                or simply:<br>
+                <span class="vector">v</span> = <span class="matrix">J</span> · <span class="vector">ω</span>
+            </div>
+            <div class="intuition">
+                <strong>Intuition:</strong> This is the chain rule in matrix form! It says "hand velocity equals 
+                Jacobian times joint velocities." The matrix J transforms from joint space to hand space.
+            </div>
+
+            <h4>4. Inverse Kinematics: The key insight</h4>
+            <div class="formula">
+                <span class="vector">ω</span> = <span class="matrix">J</span>⁻¹ · <span class="vector">v</span>
+            </div>
+            <div class="intuition">
+                <strong>Intuition:</strong> We know where we want the hand to go (<span class="vector">v</span>), 
+                but we can only control the joints (<span class="vector">ω</span>). So we need to "undo" the 
+                transformation - that's what the inverse Jacobian does!
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📈 Calculus Connection</h3>
+            <p><strong>Derivatives:</strong> The Jacobian contains partial derivatives (∂x/∂θ) that relate joint angles to position</p>
+            <p><strong>Differential Equations:</strong> The arm's motion is governed by differential equations solved in real-time</p>
+            <p><strong>Velocity & Rates of Change:</strong> We're calculating how positions change over time</p>
+        </div>
+
+        <div class="section">
+            <h3>🎓 Why This Matters</h3>
+            <p>These same mathematical principles power:</p>
+            <ul>
+                <li>🤖 Industrial robot arms in factories</li>
+                <li>🚗 Self-driving car navigation systems</li>
+                <li>🦾 Prosthetic limbs and medical robots</li>
+                <li>🚀 Space exploration rovers</li>
+                <li>🎮 Character animation in video games</li>
+            </ul>
+            <p><strong>Every time you see a robot move smoothly, there's a Jacobian matrix working behind the scenes!</strong></p>
+        </div>
+    </div>
+
+    <script>
+        // Three.js variables
+        let scene, camera, renderer;
+        let robotArm, target;
+        let isPaused = false;
+        let showVectors = true;
+        let isDragging = false;
+
+        // Velocity vectors visualization
+        let desiredVelocityArrow, jointVelocityArrows;
+
+        class SimpleRobotArm {
+            constructor() {
+                this.L1 = 2.0;  // Upper arm length
+                this.L2 = 1.5;  // Forearm length
+                
+                // Joint angles (in radians)
+                this.theta1 = Math.PI / 4;  // Shoulder angle (45 degrees)
+                this.theta2 = Math.PI / 3;  // Elbow angle (60 degrees)
+                
+                // Create visual components
+                this.createVisualization();
+            }
+            
+            createVisualization() {
+                // Base (shoulder) - fixed at origin
+                const baseGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+                const baseMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+                this.base = new THREE.Mesh(baseGeometry, baseMaterial);
+                this.base.position.set(0, 0, 0);
+                scene.add(this.base);
+                
+                // Upper arm (Link 1)
+                const link1Geometry = new THREE.CylinderGeometry(0.1, 0.1, this.L1, 32);
+                const link1Material = new THREE.MeshPhongMaterial({ color: 0x2194ce });
+                this.link1 = new THREE.Mesh(link1Geometry, link1Material);
+                this.link1.rotation.z = Math.PI / 2; // Make it horizontal initially
+                this.link1.position.x = this.L1 / 2;
+                this.base.add(this.link1);
+                
+                // Elbow joint
+                const elbowGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+                const elbowMaterial = new THREE.MeshPhongMaterial({ color: 0xff4444 });
+                this.elbow = new THREE.Mesh(elbowGeometry, elbowMaterial);
+                this.elbow.position.x = this.L1;
+                this.base.add(this.elbow);
+                
+                // Forearm (Link 2)
+                const link2Geometry = new THREE.CylinderGeometry(0.08, 0.08, this.L2, 32);
+                const link2Material = new THREE.MeshPhongMaterial({ color: 0x4caf50 });
+                this.link2 = new THREE.Mesh(link2Geometry, link2Material);
+                this.link2.rotation.z = Math.PI / 2;
+                this.link2.position.x = this.L2 / 2;
+                this.elbow.add(this.link2);
+                
+                // Hand (end effector)
+                const handGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+                const handMaterial = new THREE.MeshPhongMaterial({ color: 0xffeb3b });
+                this.hand = new THREE.Mesh(handGeometry, handMaterial);
+                this.hand.position.x = this.L2;
+                this.elbow.add(this.hand);
+                
+                // Update initial position
+                this.updateVisualization();
+            }
+            
+            forwardKinematics() {
+                // Calculate hand position from joint angles
+                const x = this.L1 * Math.cos(this.theta1) + this.L2 * Math.cos(this.theta1 + this.theta2);
+                const y = this.L1 * Math.sin(this.theta1) + this.L2 * Math.sin(this.theta1 + this.theta2);
+                return new THREE.Vector2(x, y);
+            }
+            
+            jacobian() {
+                // Calculate the Jacobian matrix
+                const J11 = -this.L1 * Math.sin(this.theta1) - this.L2 * Math.sin(this.theta1 + this.theta2);
+                const J12 = -this.L2 * Math.sin(this.theta1 + this.theta2);
+                const J21 = this.L1 * Math.cos(this.theta1) + this.L2 * Math.cos(this.theta1 + this.theta2);
+                const J22 = this.L2 * Math.cos(this.theta1 + this.theta2);
+                
+                return {
+                    matrix: [[J11, J12], [J21, J22]],
+                    determinant: J11 * J22 - J12 * J21
+                };
+            }
+            
+            inverseVelocityKinematics(desiredHandVelocity) {
+                const J = this.jacobian();
+                const lambda = 0.1; // Damping factor for singularity handling
+                
+                // Check for singularity using damped least squares method
+                if (Math.abs(J.determinant) < 0.1) {
+                    // Use damped least squares near singularities
+                    const JT = [
+                        [J.matrix[0][0], J.matrix[1][0]],
+                        [J.matrix[0][1], J.matrix[1][1]]
+                    ];
+                    
+                    const JJT_plus_lambda = [
+                        [J.matrix[0][0]*JT[0][0] + J.matrix[0][1]*JT[1][0] + lambda*lambda, 
+                         J.matrix[0][0]*JT[0][1] + J.matrix[0][1]*JT[1][1]],
+                        [J.matrix[1][0]*JT[0][0] + J.matrix[1][1]*JT[1][0],
+                         J.matrix[1][0]*JT[0][1] + J.matrix[1][1]*JT[1][1] + lambda*lambda]
+                    ];
+                    
+                    const det_inv = 1.0 / (JJT_plus_lambda[0][0]*JJT_plus_lambda[1][1] - JJT_plus_lambda[0][1]*JJT_plus_lambda[1][0]);
+                    
+                    const inv_JJT_plus_lambda = [
+                        [JJT_plus_lambda[1][1] * det_inv, -JJT_plus_lambda[0][1] * det_inv],
+                        [-JJT_plus_lambda[1][0] * det_inv, JJT_plus_lambda[0][0] * det_inv]
+                    ];
+                    
+                    // ω = Jᵀ (J Jᵀ + λ²I)⁻¹ v
+                    const omega1 = JT[0][0]*inv_JJT_plus_lambda[0][0]*desiredHandVelocity.x + 
+                                  JT[0][0]*inv_JJT_plus_lambda[0][1]*desiredHandVelocity.y +
+                                  JT[0][1]*inv_JJT_plus_lambda[1][0]*desiredHandVelocity.x + 
+                                  JT[0][1]*inv_JJT_plus_lambda[1][1]*desiredHandVelocity.y;
+                    
+                    const omega2 = JT[1][0]*inv_JJT_plus_lambda[0][0]*desiredHandVelocity.x + 
+                                  JT[1][0]*inv_JJT_plus_lambda[0][1]*desiredHandVelocity.y +
+                                  JT[1][1]*inv_JJT_plus_lambda[1][0]*desiredHandVelocity.x + 
+                                  JT[1][1]*inv_JJT_plus_lambda[1][1]*desiredHandVelocity.y;
+                    
+                    return new THREE.Vector2(omega1, omega2);
+                }
+                
+                // Normal case: ω = J⁻¹ v
+                // For 2x2 matrix: inverse = 1/det * [[J22, -J12], [-J21, J11]]
+                const invJ = [
+                    [J.matrix[1][1] / J.determinant, -J.matrix[0][1] / J.determinant],
+                    [-J.matrix[1][0] / J.determinant, J.matrix[0][0] / J.determinant]
+                ];
+                
+                const omega1 = invJ[0][0] * desiredHandVelocity.x + invJ[0][1] * desiredHandVelocity.y;
+                const omega2 = invJ[1][0] * desiredHandVelocity.x + invJ[1][1] * desiredHandVelocity.y;
+                
+                return new THREE.Vector2(omega1, omega2);
+            }
+            
+            updateVisualization() {
+                // Update shoulder rotation
+                this.base.rotation.z = this.theta1;
+                
+                // Update elbow rotation (relative to upper arm)
+                this.elbow.rotation.z = this.theta2;
+            }
+            
+            followTarget(targetPosition) {
+                const handPos = this.forwardKinematics();
+                
+                // Calculate desired hand velocity (pointing toward target)
+                const direction = new THREE.Vector2(
+                    targetPosition.x - handPos.x,
+                    targetPosition.y - handPos.y
+                );
+                
+                const distance = direction.length();
+                
+                if (distance < 0.05) {
+                    // Very close to target - stop moving
+                    return {
+                        desiredVelocity: new THREE.Vector2(0, 0),
+                        jointVelocities: new THREE.Vector2(0, 0),
+                        handPosition: handPos
+                    };
+                }
+                
+                // Normalize and scale desired velocity
+                const desiredVelocity = direction.clone().normalize().multiplyScalar(Math.min(0.8, distance * 2));
+                
+                // Calculate required joint velocities
+                const jointVelocities = this.inverseVelocityKinematics(desiredVelocity);
+                
+                // Limit joint velocities for stability
+                const maxJointVelocity = 2.0;
+                jointVelocities.x = Math.max(-maxJointVelocity, Math.min(maxJointVelocity, jointVelocities.x));
+                jointVelocities.y = Math.max(-maxJointVelocity, Math.min(maxJointVelocity, jointVelocities.y));
+                
+                // Update joint angles (simple integration)
+                this.theta1 += jointVelocities.x * 0.03;
+                this.theta2 += jointVelocities.y * 0.03;
+                
+                // Keep angles in reasonable range
+                this.theta1 = this.theta1 % (2 * Math.PI);
+                this.theta2 = Math.max(-Math.PI, Math.min(Math.PI, this.theta2));
+                
+                // Update visualization
+                this.updateVisualization();
+                
+                return {
+                    desiredVelocity: desiredVelocity,
+                    jointVelocities: jointVelocities,
+                    handPosition: handPos
+                };
+            }
+        }
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f8ff);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7);
+            scene.add(directionalLight);
+            
+            // Create coordinate grid
+            const gridHelper = new THREE.GridHelper(10, 10);
+            scene.add(gridHelper);
+            
+            const axesHelper = new THREE.AxesHelper(3);
+            scene.add(axesHelper);
+            
+            // Create robot arm
+            robotArm = new SimpleRobotArm();
+            
+            // Create target
+            const targetGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const targetMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff00ff,
+                transparent: true,
+                opacity: 0.8
+            });
+            target = new THREE.Mesh(targetGeometry, targetMaterial);
+            target.position.set(2, 1, 0);
+            scene.add(target);
+            
+            // Create velocity vector arrows
+            createVelocityVectors();
+            
+            // Setup mouse controls
+            setupMouseControls();
+            
+            // Start animation
+            animate();
+            
+            // Update math display initially
+            updateMathDisplay();
+        }
+
+        function createVelocityVectors() {
+            const arrowLength = 1;
+            
+            // Desired velocity vector (red)
+            desiredVelocityArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                arrowLength,
+                0xff4444,
+                0.3,
+                0.2
+            );
+            scene.add(desiredVelocityArrow);
+            desiredVelocityArrow.visible = false;
+            
+            // Joint velocity indicators (blue circles)
+            jointVelocityArrows = [
+                createJointVelocityIndicator(0x2194ce),
+                createJointVelocityIndicator(0x2194ce)
+            ];
+        }
+        
+        function createJointVelocityIndicator(color) {
+            const geometry = new THREE.RingGeometry(0.1, 0.2, 32);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: color, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.rotation.x = Math.PI / 2; // Make it horizontal
+            ring.visible = false;
+            scene.add(ring);
+            return ring;
+        }
+
+        function setupMouseControls() {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            
+            function onMouseMove(event) {
+                // Calculate mouse position in normalized device coordinates
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+                
+                if (isDragging) {
+                    // Update target position based on mouse
+                    raycaster.setFromCamera(mouse, camera);
+                    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+                    const intersectionPoint = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(plane, intersectionPoint);
+                    
+                    // Limit target to reasonable workspace
+                    const maxDistance = 3.5;
+                    const length = Math.sqrt(intersectionPoint.x**2 + intersectionPoint.y**2);
+                    if (length > maxDistance) {
+                        intersectionPoint.x = intersectionPoint.x * maxDistance / length;
+                        intersectionPoint.y = intersectionPoint.y * maxDistance / length;
+                    }
+                    
+                    target.position.x = intersectionPoint.x;
+                    target.position.y = intersectionPoint.y;
+                }
+            }
+            
+            function onMouseDown(event) {
+                // Check if clicking on target
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(target);
+                
+                if (intersects.length > 0) {
+                    isDragging = true;
+                }
+            }
+            
+            function onMouseUp() {
+                isDragging = false;
+            }
+            
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+        }
+
+        function updateMathDisplay() {
+            if (!robotArm) return;
+            
+            const jacobianInfo = robotArm.jacobian();
+            const handPos = robotArm.forwardKinematics();
+            const J = jacobianInfo.matrix;
+            
+            const mathElement = document.getElementById('mathDisplay');
+            mathElement.innerHTML = `
+                <p><strong>Jacobian Matrix J =</strong></p>
+                <p>[${J[0][0].toFixed(2)}, ${J[0][1].toFixed(2)}]</p>
+                <p>[${J[1][0].toFixed(2)}, ${J[1][1].toFixed(2)}]</p>
+                <p>det(J) = ${jacobianInfo.determinant.toFixed(4)}</p>
+                <p><strong>Hand Position:</strong> (${handPos.x.toFixed(2)}, ${handPos.y.toFixed(2)})</p>
+                <p><strong>Joint Angles:</strong> θ₁=${robotArm.theta1.toFixed(2)}, θ₂=${robotArm.theta2.toFixed(2)}</p>
+            `;
+        }
+
+        function updateVelocityVectors(handPos, desiredVel, jointVel) {
+            if (!showVectors) {
+                desiredVelocityArrow.visible = false;
+                jointVelocityArrows.forEach(arrow => arrow.visible = false);
+                return;
+            }
+            
+            // Update desired velocity vector (red)
+            if (desiredVel.length() > 0.1) {
+                desiredVelocityArrow.position.set(handPos.x, handPos.y, 0);
+                desiredVelocityArrow.setDirection(new THREE.Vector3(desiredVel.x, desiredVel.y, 0).normalize());
+                desiredVelocityArrow.setLength(desiredVel.length(), 0.3, 0.2);
+                desiredVelocityArrow.visible = true;
+            } else {
+                desiredVelocityArrow.visible = false;
+            }
+            
+            // Update joint velocity indicators
+            if (Math.abs(jointVel.x) > 0.01) {
+                jointVelocityArrows[0].position.set(0, 0, 0);
+                jointVelocityArrows[0].scale.setScalar(Math.abs(jointVel.x) * 0.5 + 0.5);
+                jointVelocityArrows[0].visible = true;
+            } else {
+                jointVelocityArrows[0].visible = false;
+            }
+            
+            if (Math.abs(jointVel.y) > 0.01) {
+                const elbowX = robotArm.L1 * Math.cos(robotArm.theta1);
+                const elbowY = robotArm.L1 * Math.sin(robotArm.theta1);
+                jointVelocityArrows[1].position.set(elbowX, elbowY, 0);
+                jointVelocityArrows[1].scale.setScalar(Math.abs(jointVel.y) * 0.5 + 0.5);
+                jointVelocityArrows[1].visible = true;
+            } else {
+                jointVelocityArrows[1].visible = false;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!isPaused && robotArm) {
+                // Make the arm follow the target
+                const result = robotArm.followTarget(new THREE.Vector2(target.position.x, target.position.y));
+                
+                // Update math display
+                updateMathDisplay();
+                
+                // Update velocity vectors
+                updateVelocityVectors(result.handPosition, result.desiredVelocity, result.jointVelocities);
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function resetDemo() {
+            if (robotArm) {
+                robotArm.theta1 = Math.PI / 4;
+                robotArm.theta2 = Math.PI / 3;
+                robotArm.updateVisualization();
+            }
+            if (target) {
+                target.position.set(2, 1, 0);
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.querySelector('#controls button:nth-child(2)').textContent = 
+                isPaused ? "▶️ Resume" : "⏸️ Pause";
+        }
+
+        function toggleVectors() {
+            showVectors = document.getElementById('showVectors').checked;
+        }
+
+        function showExplainer() {
+            document.getElementById('explainer-modal').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function hideExplainer() {
+            document.getElementById('explainer-modal').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start the application when the page loads
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
