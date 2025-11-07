@@ -14,6 +14,8 @@ Included files (tracked in this repository)
 - `3d.html` — 3D robotic arm simulation / explanation
 - `math-explorer.html` — Discussion of the underlying mathematics
 - `README.md` — This file
+ - `LICENSE` — MIT license for the project
+ - `.gitignore` — Patterns for files kept out of version control
 
 Notes for running locally
 - This is a simple static website. Open `index.html` in a browser to view the content.
@@ -29,6 +31,8 @@ Files kept locally but not committed
 - `robotic_arm.py` — simulation / helper script kept locally (not tracked in the repo)
 - `robotic_arm_activity.md` and `robotic_arm_simulation.md` — working notes kept locally
 
-License & contact
-- Add a license file if you want to make the project open-source.
+License
+- This project is released under the MIT License. See the `LICENSE` file for full terms.
+
+Contact
 - For questions or contributions, open an issue on the GitHub repo.
