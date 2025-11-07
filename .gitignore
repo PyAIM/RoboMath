@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*~
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Virtual envs
+venv/
+env/
+
+# Node
+node_modules/
+
+# Don't track these working files (kept locally)
+robotic_arm.py
+robotic_arm_activity.md
+robotic_arm_simulation.md
