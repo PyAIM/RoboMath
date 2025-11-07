@@ -12,7 +12,7 @@ Included files (tracked in this repository)
 - `index.html` — Project landing page
 - `2d.html` — 2D robotic arm simulation / explanation
 - `3d.html` — 3D robotic arm simulation / explanation
-- `math-explorer.html` — Interactive math visualizations used by the simulations
+- `math-explorer.html` — Discussion of the underlying mathematics
 - `README.md` — This file
 
 Notes for running locally
